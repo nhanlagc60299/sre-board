@@ -4,7 +4,7 @@ import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
 from sreboard.store import Store, Problem
 
 STATIC = Path(__file__).resolve().parent.parent / 'static'
@@ -70,7 +70,8 @@ def make_server(db_path, webhook_token, operator_token, port=0):
                 raise Problem(400, 'Malformed JSON')
 
         def dispatch(self):
-            path = urlsplit(self.path).path
+            url = urlsplit(self.path)
+            path = url.path
             if self.command == 'GET' and path == '/health':
                 return self.reply(200, {'status': 'ok', 'scope': 'local-pilot'})
             files = {'/': ('index.html', 'text/html; charset=utf-8'),
@@ -89,7 +90,11 @@ def make_server(db_path, webhook_token, operator_token, port=0):
             if path.startswith('/api/'):
                 self.authorized(operator_token)
                 if self.command == 'GET' and path == '/api/alerts':
-                    return self.reply(200, store.active())
+                    query = parse_qs(url.query, keep_blank_values=True)
+                    scope = query.get('scope', ['active'])
+                    if set(query) - {'scope'} or scope not in (['active'], ['resolved']):
+                        raise Problem(400, 'scope must be active or resolved')
+                    return self.reply(200, store.active(resolved=scope == ['resolved']))
                 parts = path.strip('/').split('/')
                 if len(parts) == 3 and parts[:2] == ['api', 'alerts'] and self.command == 'GET':
                     return self.reply(200, store.detail(parts[2]))

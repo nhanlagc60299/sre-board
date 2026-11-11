@@ -88,3 +88,17 @@ class HTTPTests(unittest.TestCase):
         for a, b in [('', ''), ('short', OPERATOR), (OPERATOR, OPERATOR)]:
             with self.assertRaises(ValueError):
                 make_server(Path(self.tmp.name) / 'invalid.sqlite', a, b)
+
+    def test_resolved_history_is_browsable_without_knowing_an_id(self):
+        item = self.request('/api/webhook', self.payload, WEBHOOK)[1]['alert']
+        unresolved = self.request('/api/webhook', dict(self.payload, event_id='still-active', severity='P4'), WEBHOOK)[1]['alert']
+        for version, state in enumerate(['Acknowledge', 'Investigating', 'Monitoring', 'Resolved'], 1):
+            self.request(f"/api/alerts/{item['id']}/state", dict(state=state, version=version))
+        code, history = self.request('/api/alerts?scope=resolved')
+        self.assertEqual(200, code)
+        self.assertEqual([item['id']], [r['id'] for r in history['alerts']])
+        self.assertEqual('Resolved', history['alerts'][0]['state'])
+        self.assertEqual([unresolved['id']], [r['id'] for r in self.request('/api/alerts')[1]['alerts']])
+        self.assertEqual(401, self.request('/api/alerts?scope=resolved', token=None)[0])
+        for query in ['scope=all', 'scope=', 'scope=resolved&scope=active', 'unexpected=1']:
+            self.assertEqual(400, self.request('/api/alerts?' + query)[0])
