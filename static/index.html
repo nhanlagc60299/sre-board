@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SRE Board · Alert operations</title><link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="/">SRE<span>BOARD</span></a>
+    <p class="workspace">PIPELINE OPERATIONS</p>
+    <a class="nav-current" href="#report">Active alerts <span id="nav-count">—</span></a>
+    <section class="side-note"><h2>Handling flow</h2><ol>
+      <li>New</li><li>Acknowledge</li><li>Investigating</li><li>Monitoring</li><li>Resolved</li>
+    </ol><p>Resolved leaves the active report. History is retained.</p></section>
+    <p class="pilot">Local pilot · Real API + SQLite</p>
+  </aside>
+  <main>
+    <header class="topbar"><span>Operations / Alert report</span><span id="connection">Not connected</span></header>
+    <section class="heading"><div><h1>Keep the signal.<br>Close the loop.</h1><p>One workspace for pipeline alerts, from first acknowledgment to resolution.</p></div><button id="refresh" type="button">Refresh report</button></section>
+    <form id="session" class="session"><label for="token">Operator token</label><input id="token" type="password" autocomplete="off" placeholder="Enter your local operator token" required><button type="submit">Connect</button><button id="disconnect" class="secondary" type="button">Disconnect</button><span>Kept in memory for this tab only.</span></form>
+    <p id="status" class="status" role="status" aria-live="polite">Connect to load the live report.</p>
+    <section class="summary" aria-label="Severity counts for loaded rows">
+      <div><span class="summary-label">LOADED ACTIVE</span><strong id="total">—</strong><small>Before filters · maximum 500</small></div>
+      <div><span class="severity p1">P1 · Critical</span><strong id="P1">—</strong></div>
+      <div><span class="severity p2">P2 · High</span><strong id="P2">—</strong></div>
+      <div><span class="severity p3">P3 · Medium</span><strong id="P3">—</strong></div>
+      <div><span class="severity p4">P4 · Low</span><strong id="P4">—</strong></div>
+    </section>
+    <section id="report" class="report">
+      <div class="report-head"><div><h2>Active alert report</h2><p id="report-info">No data loaded</p></div><div class="filters"><label for="search" class="sr-only">Search alerts</label><input id="search" type="search" placeholder="Search title or pipeline"><label for="severity" class="sr-only">Filter severity</label><select id="severity"><option value="">All severities</option>P1</option><option>P2</option><option>P3</option><option>P4</option></select></div></div>
+      <p id="truncated" class="warning" hidden>Only the latest 500 active alerts are loaded. Counts describe loaded rows.</p>
+      <div class="table-wrap"><table><thead><tr><th>Severity</th><th>Alert / pipeline</th><th>Handling state</th><th>Updated</th><th>Next action</th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div id="empty" class="empty">Your report is ready.<span>Connect with an operator token to retrieve alerts.</span></div>
+      <footer><span>Severity and handling state are independent.</span><span id="updated">Not synchronized</span></footer>
+    </section>
+  </main>
+  <dialog id="detail"><div class="dialog-header"><h2>Alert history</h2><button id="close-detail" type="button">Close</button></div><div id="detail-content"></div></dialog>
+</body>
+</html>
