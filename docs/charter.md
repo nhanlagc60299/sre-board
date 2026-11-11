@@ -1,6 +1,6 @@
 # SRE Board — project charter
 
-Version: 0.1, 2026-11-11. Tracking: SREB-1 / SREB-2.
+Version: 0.2, 2026-11-11. Tracking: SREB-1 / SREB-2.
 Repository: https://github.com/nhanlagc60299/sre-board
 
 ## Verified starting point
@@ -47,7 +47,7 @@ This is a local pilot, not a claim that a stdlib HTTP server is internet-ready.
 Do not bind publicly; require separate tokens for webhook and operator API.
 
 ## Delivery gates
-1. PO confirms proposed product rules in `requirements.md`.
+1. PO confirmed D1–D10 for the local pilot; see `decisions.md`.
 2. Version code/contracts/tests and actual execution evidence.
 3. Technical self-review and tracked corrections; disclose no independent human review.
 4. Demonstrate running app and obtain actual PO business acceptance.

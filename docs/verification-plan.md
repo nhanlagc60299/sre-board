@@ -1,7 +1,7 @@
 # Verification plan and evidence ledger
 
-Version 0.1. Expected results derive from confirmed scope plus explicitly proposed
-D1–D10. Passing proposal-based tests is not proof of PO acceptance.
+Version 0.2. Expected results derive from confirmed scope and PO-approved D1–D10.
+Passing tests is not proof of running-app business acceptance.
 
 ## Risk / requirement → test → oracle
 | ID | Risk / requirement | Test | Independent expected / source | Scope |
@@ -34,7 +34,7 @@ pass/fail/blocked/skipped/not-run counts, logs/screenshots and known limitations
 Local results, CI runs, integrated candidate checks, PO acceptance, and post-deploy
 checks are different evidence scopes. A command that did not run is not pass.
 
-## Initial ledger
+## Historical initial ledger (before implementation)
 - Repository seed: actual, documentation only; no product checks applicable.
 - Requirements proposal: written, PO decisions pending.
 - Product tests, browser screenshots, CI: not run.

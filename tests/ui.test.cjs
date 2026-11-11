@@ -1,0 +1,88 @@
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+const fs = require('node:fs');
+// Unit tests use a minimal DOM/fetch double, not evidence of browser rendering.
+function harness() {
+  const elements = {}, pending = [];
+  const document = {activeElement: null};
+  class Element {
+    constructor(tag = 'div') { this.tagName = tag; this.children = []; this.dataset = {}; this.value = ''; this.events = {}; }
+    set textContent(value) { this.text = value; this.children = []; }
+    get textContent() { return this.text || this.children.map(c => c.textContent).join(' '); }
+    append(...nodes) { for (const n of nodes) { n.parentElement = this; this.children.push(n); } }
+    replaceChildren(...nodes) {
+      let active = document.activeElement;
+      while (active) { if (active === this) { document.activeElement = null; break; } active = active.parentElement; }
+      this.children = []; this.text = ''; this.append(...nodes);
+    }
+    setAttribute() {}
+    addEventListener(name, fn) { this.events[name] = fn; }
+    close() { this.open = false; }
+    showModal() { this.open = true; }
+    focus() { document.activeElement = this; }
+    closest(tag) { let e = this; while (e && e.tagName !== tag) e = e.parentElement; return e; }
+    querySelector(selector) {
+      const action = selector.match(/data-action="([^"]+)"/)?.[1];
+      const walk = e => e.dataset.action === action ? e : e.children.map(walk).find(Boolean);
+      return walk(this);
+    }
+  }
+  document.createElement = tag => new Element(tag);
+  document.getElementById = id => elements[id] ||= new Element();
+  const context = vm.createContext({document, fetch: () => new Promise(resolve => pending.push(resolve)),
+    setInterval: () => 1, clearInterval: () => {}, Date, Error, console});
+  vm.runInContext(fs.readFileSync('static/app.js', 'utf8'), context);
+  const run = code => vm.runInContext(code, context);
+  const response = {alerts: [{id:'fixture-A', title:'Unresolved P1', pipeline:'orders', severity:'P1', state:'New', version:1, updated_at:'2026-11-11T00:00:00Z'}], total:1, truncated:false};
+  return {run, elements, pending, document, response};
+}
+test('late report response cannot repopulate after disconnect', async () => {
+  const h = harness();
+  const loading = h.run('token="unit-operator"; load()');
+  h.run('disconnect()');
+  h.pending.shift()({ok:true, json:async () => h.response});
+  await loading;
+  assert.equal(h.elements.rows.children.length, 0);
+  assert.equal(h.elements.connection.textContent, 'Not connected');
+});
+test('old connection cannot overwrite a newer connection', async () => {
+  const h = harness();
+  const first = h.run('token="old"; load()');
+  h.run('disconnect(); token="new"');
+  const second = h.run('load()');
+  const oldResolve = h.pending.shift(), newResolve = h.pending.shift();
+  assert.equal(typeof newResolve, 'function');
+  newResolve({ok:true, json:async () => ({alerts:[], total:0, truncated:false})});
+  await second;
+  oldResolve({ok:true, json:async () => h.response});
+  await first;
+  assert.equal(h.elements.rows.children.length, 0);
+});
+test('polling preserves focus on the same surviving action', async () => {
+  const h = harness();
+  const initial = h.run('token="unit-operator"; load()');
+  h.pending.shift()({ok:true, json:async () => h.response});
+  await initial;
+  const firstButton = h.elements.rows.children[0].children[4].children[0].children[0];
+  firstButton.focus();
+  const refresh = h.run('load()');
+  h.pending.shift()({ok:true, json:async () => h.response});
+  await refresh;
+  const newButton = h.elements.rows.children[0].children[4].children[0].children[0];
+  assert.equal(h.document.activeElement, newButton);
+  assert.notEqual(firstButton, newButton);
+});
+test('old unauthorized response cannot disconnect a newer session', async () => {
+  const h = harness();
+  const first = h.run('token="old"; load()');
+  h.run('disconnect(); token="new"');
+  const second = h.run('load()');
+  const oldResolve = h.pending.shift(), newResolve = h.pending.shift();
+  newResolve({ok:true, json:async () => h.response});
+  await second;
+  oldResolve({ok:false, status:401, json:async () => ({error:'Invalid token'})});
+  await first;
+  assert.equal(h.run('token'), 'new');
+  assert.equal(h.elements.rows.children.length, 1);
+});

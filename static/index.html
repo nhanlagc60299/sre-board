@@ -34,6 +34,7 @@
       <div id="empty" class="empty">Your report is ready.<span>Connect with an operator token to retrieve alerts.</span></div>
       <footer><span>Severity and handling state are independent.</span><span id="updated">Not synchronized</span></footer>
     </section>
+    <form id="history-lookup" class="session retained"><label for="history-id">Retained alert ID</label><input id="history-id" placeholder="Paste a known alert ID" required><button type="submit">View retained history</button><span>Includes alerts already resolved.</span></form>
   </main>
   <dialog id="detail"><div class="dialog-header"><h2>Alert history</h2><button id="close-detail" type="button">Close</button></div><div id="detail-content"></div></dialog>
 </body>
