@@ -1,6 +1,7 @@
 # Requirements and decision proposal
 
-Version: 0.1. SREB-1 / SREB-2. Proposal is reviewable, not PO-approved yet.
+Version: 0.2. SREB-1 / SREB-2. D1–D10 approved by the PO for the local pilot;
+see `decisions.md`. Running-app business acceptance remains pending.
 
 ## Confirmed requirements
 - REQ-01: receive pipeline alerts via webhook.
@@ -8,7 +9,7 @@ Version: 0.1. SREB-1 / SREB-2. Proposal is reviewable, not PO-approved yet.
 - REQ-03: support Acknowledge → Investigating → Monitoring → Resolved.
 - REQ-04: Resolved automatically leaves the active report; not automatic data deletion.
 
-## Proposed pilot contract — PO confirmation required
+## Approved local-pilot contract — D1–D10
 D1. POST `/api/webhook` JSON: `event_id`, `title`, `pipeline`, `severity`.
 All required strings; severity from sender exactly P1–P4, never inferred from state.
 Lengths: event_id 1–128, title 1–200, pipeline 1–120 Unicode characters after trim.
@@ -36,7 +37,7 @@ more exist. Severity counts must refer to displayed rows, not an implied global 
 D10. Local pilot only, loopback binding. Production load/SLO, TLS/SSO, retention,
 backup/restore and multi-host deployment remain separate rollout decisions.
 
-## Observable acceptance examples under this proposal
+## Observable acceptance examples under the approved contract
 - AC-01 / REQ-01: valid P2 webhook creates exactly one New alert with the supplied
 severity; invalid input cannot create data. Duplicate and conflict behavior follows D4.
 - AC-02 / REQ-02: P1/New and P4/Investigating are distinguishable; advancing state
@@ -49,11 +50,12 @@ report within D8 timing while detail/history still shows its retained record.
 - AC-06 / D9: empty/error/truncation cases are explicit, not silent data loss.
 
 ## Gap ownership and closure
-GAP-REQ-01: D1–D10 are proposals. Known: core scope above. Unknown: PO acceptance
-of concrete semantics/limits. Impact: dependent code can only be treated as a draft.
+GAP-REQ-01: CLOSED for requirements clarification. PO explicitly approved D1–D10
+for the local pilot in chat on 2026-11-11; evidence recorded in `decisions.md`.
+Tests and final business acceptance remain separate tracking items.
 Tracking owner: Codex. Decision maker: Anh Nhân Lê (PO), technical advice by Codex.
-Deadline: before business acceptance/merging behavior as accepted requirements.
-Close: explicit PO response recorded here with version; then update tests separately.
+Original deadline: before merging behavior as accepted requirements.
+Closure evidence: explicit PO response and this versioned decision record.
 No test pass can close this business-decision gap.
 
 GAP-ROL-01: no independent human technical review. Known: PO delegated agent review.
