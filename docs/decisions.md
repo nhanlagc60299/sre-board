@@ -28,6 +28,11 @@ This is an interface for D7's retained detail, not a change in retention policy.
 - main is the actual source integration branch. No master/UAT/production deployment
 exists; the first local pilot must not invent a deployed baseline B.
 
+- Actual CI run 43037967024 succeeded but warned about old Action runtimes.
+Verified official actions releases and pinned checkout v7.0.1/setup-python v7.1.0/
+setup-node v7.1.0 to exact SHAs; pinned ubuntu-24.04 for runner reproducibility.
+This configuration change requires a new CI result, not reuse of the old result.
+
 ## Remaining decisions/evidence
 PO business acceptance: pending a real demonstration and explicit response.
 Independent human review: absent, disclosed; not fabricated or required by delegation.
