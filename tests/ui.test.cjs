@@ -86,3 +86,30 @@ test('old unauthorized response cannot disconnect a newer session', async () => 
   assert.equal(h.run('token'), 'new');
   assert.equal(h.elements.rows.children.length, 1);
 });
+test('changing to resolved history ignores a late active-report response', async () => {
+  const h = harness();
+  const first = h.run('token="operator"; load()');
+  const second = h.run("switchView('resolved')");
+  const activeResolve = h.pending.shift(), resolvedResolve = h.pending.shift();
+  resolvedResolve({ok:true, json:async () => ({alerts:[], total:0, truncated:false})});
+  await second;
+  activeResolve({ok:true, json:async () => h.response});
+  await first;
+  assert.equal(h.elements.rows.children.length, 0);
+  assert.equal(h.elements['report-title'].textContent, 'Resolved alert history');
+});
+test('resolved rows can open history but have no advance action', async () => {
+  const h = harness();
+  const item = {...h.response.alerts[0], state:'Resolved', title:'Retained resolved incident', version:5};
+  const loading = h.run("token='operator'; view='resolved'; load()");
+  h.pending.shift()({ok:true, json:async () => ({alerts:[item], total:1, truncated:false})});
+  await loading;
+  const row = h.elements.rows.children[0];
+  assert.equal(row.children[4].children[0].children.length, 1);
+  assert.equal(row.children[4].children[0].children[0].textContent, 'History');
+  const opening = row.children[1].children[0].events.click();
+  h.pending.shift()({ok:true, json:async () => ({alert:item,history:[{to_state:'Resolved',version:5,at:item.updated_at}]})});
+  await opening;
+  assert.equal(h.elements.detail.open, true);
+  assert.match(h.elements['detail-content'].textContent, /Retained resolved incident/);
+});

@@ -15,7 +15,8 @@ export SREB_DB='sreboard.sqlite'
 python3 -m sreboard.server
 ```
 
-Open http://127.0.0.1:8765. Enter the operator token; it stays in tab memory only.
+Open http://127.0.0.1:8765. Unlock the board with the operator access key; it stays in tab memory only.
+This shared pilot API key is not a Jira/GitHub password or per-person identity.
 The server binds loopback only. These sample strings are instructions, not deployed
 credentials. The pilot is not an internet-facing production server.
 
@@ -28,8 +29,8 @@ curl --fail-with-body http://127.0.0.1:8765/api/webhook \
 ```
 
 New → Acknowledge → Investigating → Monitoring → Resolved. Resolved leaves the
-active report; SQLite retains the alert and history. Use a known alert ID in
-“View retained history” to inspect it after resolution. Severity is independent.
+active report; SQLite retains the alert and history. Open “Resolved history” and click the alert title to inspect it after resolution;
+no ID entry is required. Severity is independent.
 Exact duplicates return the same alert; conflicting payloads/version updates return 409.
 
 ## Verify

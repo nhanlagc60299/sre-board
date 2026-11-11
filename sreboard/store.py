@@ -79,12 +79,14 @@ class Store:
                        (item['id'], 'New', 1, now))
             return item, False
 
-    def active(self):
+    def active(self, resolved=False):
         with self.connection() as db:
             db.execute('BEGIN')
-            rows = db.execute("SELECT * FROM alerts WHERE state!='Resolved' "
-                              'ORDER BY created_at DESC,id DESC LIMIT 500').fetchall()
-            total = db.execute("SELECT COUNT(*) FROM alerts WHERE state!='Resolved'").fetchone()[0]
+            predicate = "state='Resolved'" if resolved else "state!='Resolved'"
+            ordering = 'updated_at' if resolved else 'created_at'
+            rows = db.execute(f'SELECT * FROM alerts WHERE {predicate} '
+                              f'ORDER BY {ordering} DESC,id DESC LIMIT 500').fetchall()
+            total = db.execute(f'SELECT COUNT(*) FROM alerts WHERE {predicate}').fetchone()[0]
             return dict(alerts=[dict(row) for row in rows], total=total,
                         truncated=total > len(rows))
 

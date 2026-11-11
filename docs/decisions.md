@@ -33,6 +33,12 @@ Verified official actions releases and pinned checkout v7.0.1/setup-python v7.1.
 setup-node v7.1.0 to exact SHAs; pinned ubuntu-24.04 for runner reproducibility.
 This configuration change requires a new CI result, not reuse of the old result.
 
+## PO feedback before acceptance
+The PO rejected manual retained-ID lookup: browse alerts directly instead.
+SREB-8 replaces it with Resolved history and clickable alert titles. This is a real
+acceptance finding, not an assumed PO pass. D7 retention/permissions remain unchanged.
+The operator token is a shared pilot API access key, not a person or Jira/GitHub identity.
+
 ## Remaining decisions/evidence
 PO business acceptance: pending a real demonstration and explicit response.
 Independent human review: absent, disclosed; not fabricated or required by delegation.
