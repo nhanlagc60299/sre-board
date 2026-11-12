@@ -1,5 +1,9 @@
 # Decision record — local pilot v0.1
 
+Current baseline: [PO-approved v0.2](approval.md) and [delivery workflow](workflow.md).
+Historical statements below about main integration and manual ID lookup are
+superseded by develop QA/final main release and directly browsable history.
+
 Date: 2026-11-11, Asia/Ho_Chi_Minh. PO: Anh Nhan Le (`nhanlagc60299`).
 Source: explicit user replies in the Codex project chat, not inferred from commits.
 
