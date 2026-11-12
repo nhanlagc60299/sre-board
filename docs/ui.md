@@ -36,3 +36,10 @@ focus to another control. Connect/Disconnect also set deliberate focus targets.
 This validates why mocked-DOM unit passes cannot replace actual browser QA.
 Unknown transport/server outcomes say the update could not be confirmed, rather
 than claiming no mutation occurred. Refresh is required before another attempt.
+Real two-session conflict testing exposed the same disable/blur issue on rejected
+updates; focus restoration therefore runs after both success and error unless
+the session changed or the user selected another control. First-load failure
+focuses the visible heading and suggests Refresh/Disconnect without claiming data.
+The asynchronous Connect continuation also checks session identity before starting
+polling or moving focus; an old response cannot create a second polling timer.
+Disconnect resets filters as well as protected content before a new session.

@@ -5,6 +5,7 @@ const fs = require('node:fs');
 // Unit tests use a minimal DOM/fetch double, not evidence of browser rendering.
 function harness() {
   const elements = {}, pending = [];
+  let scheduled = 0;
   const document = {activeElement: null};
   class Element {
     constructor(tag = 'div') { this.tagName = tag; this.children = []; this.dataset = {}; this.value = ''; this.events = {}; }
@@ -31,11 +32,11 @@ function harness() {
   document.createElement = tag => new Element(tag);
   document.getElementById = id => elements[id] ||= new Element();
   const context = vm.createContext({document, fetch: () => new Promise(resolve => pending.push(resolve)),
-    setInterval: () => 1, clearInterval: () => {}, Date, Error, console});
+    setInterval: () => ++scheduled, clearInterval: () => {}, Date, Error, console});
   vm.runInContext(fs.readFileSync('static/app.js', 'utf8'), context);
   const run = code => vm.runInContext(code, context);
   const response = {alerts: [{id:'fixture-A', title:'Unresolved P1', pipeline:'orders', severity:'P1', state:'New', version:1, updated_at:'2026-11-11T00:00:00Z'}], total:1, truncated:false};
-  return {run, elements, pending, document, response};
+  return {run, elements, pending, document, response, scheduled:() => scheduled};
 }
 test('late report response cannot repopulate after disconnect', async () => {
   const h = harness();
@@ -181,12 +182,29 @@ test('disabling the clicked action cannot lose focus after its successful update
 });
 test('server failure does not falsely claim an update was never applied', async () => {
   const h = harness();
+  h.run("document.body=document.getElementById('unit-body')");
   const first = h.run("token='operator'; load()");
   h.pending.shift()({ok:true,json:async () => h.response}); await first;
   const button = h.elements.rows.children[0].querySelector('button[data-action="advance"]');
+  Object.defineProperty(button,'disabled',{set(value){
+    if (value && h.document.activeElement === this) h.document.activeElement=h.document.body;
+  }});
   button.focus(); const update = h.run('advanceAlert(alerts[0],document.activeElement)');
   h.pending.shift()({ok:false,status:500,json:async () => ({error:'Internal error'})});
   await update;
   assert.match(h.elements.status.textContent,/could not be confirmed/);
   assert.doesNotMatch(h.elements.status.textContent,/not applied/);
+  assert.equal(h.document.activeElement,button);
+});
+test('an obsolete connect handler cannot start another timer or steal focus', async () => {
+  const h = harness(), field = h.run("document.getElementById('token')");
+  field.value='old'; const first=h.elements.session.events.submit({preventDefault(){}});
+  h.run('disconnect()'); field.value='new';
+  const second=h.elements.session.events.submit({preventDefault(){}});
+  const oldResolve=h.pending.shift(), newResolve=h.pending.shift();
+  newResolve({ok:true,json:async () => ({alerts:[],total:0,truncated:false})}); await second;
+  h.elements.search.focus();
+  oldResolve({ok:true,json:async () => h.response}); await first;
+  assert.equal(h.scheduled(),1);
+  assert.equal(h.document.activeElement,h.elements.search);
 });

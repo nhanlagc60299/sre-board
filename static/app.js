@@ -70,7 +70,7 @@ function render() {
   $('empty').hidden = visible.length > 0;
   if (!visible.length) {
     $('empty').replaceChildren(node('div', token ? (!loaded ? (loadFailed ? 'Report unavailable.' : 'Loading report…') : alerts.length ? 'No matching alerts.' : view === 'active' ? 'All clear. No active alerts.' : 'No resolved alerts yet.') : 'Your report is ready.'),
-      node('span', token ? 'Resolved alerts remain available in Resolved history.' : 'Connect using your board access key.'));
+      node('span', token ? (!loaded && loadFailed ? 'Try Refresh or Disconnect. No report data has been loaded.' : 'Resolved alerts remain available in Resolved history.') : 'Connect using your board access key.'));
   }
   $('total').textContent = token && loaded ? alerts.length : '—';
   if (view === 'active') $('nav-count').textContent = token && loaded ? alerts.length : '—';
@@ -113,18 +113,23 @@ async function advanceAlert(alert, button) {
     await api(`/api/alerts/${alert.id}/state`, {state: nextState[alert.state], version: alert.version});
     if (requestEpoch !== epoch) return;
     busy = false; await load();
-    if (document.activeElement === document.body || document.activeElement === button) {
-      const row = [...$('rows').children].find(r => r.dataset.id === alert.id);
-      const action = row?.querySelector('button[data-action="advance"]');
-      if (action) action.focus(); else $('view-heading').focus();
-    }
   } catch (error) {
     if (requestEpoch !== epoch) return;
     const text = error.status === 409 ? 'Update not applied. Refresh this alert before trying again.'
       : error.status && error.status < 500 ? `Update rejected: ${error.message}`
       : 'Update result could not be confirmed. Refresh before trying again.';
     message(text, true);
-  } finally { if (requestEpoch === epoch) busy = false; button.disabled = false; }
+  } finally {
+    button.disabled = false;
+    if (requestEpoch === epoch) {
+      busy = false;
+      if (document.activeElement === document.body || document.activeElement === button) {
+        const row = [...$('rows').children].find(r => r.dataset.id === alert.id);
+        const action = row?.querySelector('button[data-action="advance"]');
+        if (action) action.focus(); else $('view-heading').focus();
+      }
+    }
+  }
 }
 async function showHistory(alert) {
   if (!token) { message('Connect before opening history.', true); return; }
@@ -148,6 +153,7 @@ function disconnect() {
   loadFailed = false;
   epoch++; busy = false; token = ''; alerts = []; total = 0; loaded = false; $('nav-count').textContent = '—'; clearInterval(timer); timer = null;
   $('token').value = ''; $('truncated').hidden = true;
+  $('search').value = ''; $('severity').value = '';
   $('connection').textContent = 'Not connected'; $('updated').textContent = 'Not synchronized';
   $('detail').close(); $('detail-content').replaceChildren(); render();
   message('Board disconnected. Enter a board access key to connect.');
@@ -155,9 +161,11 @@ function disconnect() {
 }
 $('session').addEventListener('submit', async event => {
   event.preventDefault(); const entered = $('token').value; disconnect(); token = entered;
+  const sessionEpoch = epoch;
   render(); message('Connecting…');
   clearInterval(timer); await load();
-  if (token) { timer = setInterval(load, 2000); if (loaded) $('view-heading').focus(); }
+  if (sessionEpoch !== epoch) return;
+  if (token) { timer = setInterval(load, 2000); $('view-heading').focus(); }
 });
 $('refresh').addEventListener('click', () => token ? load() : message('Connect with your board access key first.'));
 $('disconnect').addEventListener('click', disconnect);
