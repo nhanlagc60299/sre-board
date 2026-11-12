@@ -107,14 +107,23 @@ async function load() {
 }
 async function advanceAlert(alert, button) {
   if (!token || busy) return;
+  button.focus();
   busy = true; button.disabled = true; const requestEpoch = epoch;
   try {
     await api(`/api/alerts/${alert.id}/state`, {state: nextState[alert.state], version: alert.version});
     if (requestEpoch !== epoch) return;
     busy = false; await load();
+    if (document.activeElement === document.body || document.activeElement === button) {
+      const row = [...$('rows').children].find(r => r.dataset.id === alert.id);
+      const action = row?.querySelector('button[data-action="advance"]');
+      if (action) action.focus(); else $('view-heading').focus();
+    }
   } catch (error) {
     if (requestEpoch !== epoch) return;
-    message(error.status === 409 ? 'Update not applied. Refresh this alert before trying again.' : `Update not applied: ${error.message}`, true);
+    const text = error.status === 409 ? 'Update not applied. Refresh this alert before trying again.'
+      : error.status && error.status < 500 ? `Update rejected: ${error.message}`
+      : 'Update result could not be confirmed. Refresh before trying again.';
+    message(text, true);
   } finally { if (requestEpoch === epoch) busy = false; button.disabled = false; }
 }
 async function showHistory(alert) {
@@ -142,12 +151,13 @@ function disconnect() {
   $('connection').textContent = 'Not connected'; $('updated').textContent = 'Not synchronized';
   $('detail').close(); $('detail-content').replaceChildren(); render();
   message('Board disconnected. Enter a board access key to connect.');
+  $('token').focus();
 }
 $('session').addEventListener('submit', async event => {
   event.preventDefault(); const entered = $('token').value; disconnect(); token = entered;
   render(); message('Connecting…');
   clearInterval(timer); await load();
-  if (token) timer = setInterval(load, 2000);
+  if (token) { timer = setInterval(load, 2000); if (loaded) $('view-heading').focus(); }
 });
 $('refresh').addEventListener('click', () => token ? load() : message('Connect with your board access key first.'));
 $('disconnect').addEventListener('click', disconnect);

@@ -133,6 +133,13 @@ test('disconnect clears retained protected detail content', async () => {
   h.run('disconnect()');
   assert.equal(h.elements['detail-content'].textContent,'');
   assert.equal(h.elements.detail.open,false);
+  assert.equal(h.document.activeElement,h.elements.token);
+});
+test('ordinary disconnect focuses the key field even without an open dialog', () => {
+  const h = harness(); h.run("token='operator'; disconnect()");
+  assert.equal(h.document.activeElement,h.elements.token);
+  assert.equal(h.elements.session.hidden,false);
+  assert.equal(h.elements.board.hidden,true);
 });
 test('removing a focused alert returns focus to the visible view heading', async () => {
   const h = harness();
@@ -153,4 +160,33 @@ test('first-load failure shows an error rather than a loading or all-clear state
   await loading;
   assert.match(empty.textContent,/Report unavailable/);
   assert.doesNotMatch(empty.textContent,/Loading|All clear/);
+});
+test('disabling the clicked action cannot lose focus after its successful update', async () => {
+  const h = harness();
+  h.run("document.body=document.getElementById('unit-body')");
+  const first = h.run("token='operator'; load()");
+  h.pending.shift()({ok:true,json:async () => h.response}); await first;
+  const button = h.elements.rows.children[0].querySelector('button[data-action="advance"]');
+  button.focus();
+  Object.defineProperty(button,'disabled',{set(value){
+    if (value && h.document.activeElement === this) h.document.activeElement=h.document.body;
+  }});
+  const updating = h.run('advanceAlert(alerts[0],document.activeElement)');
+  h.pending.shift()({ok:true,json:async () => ({alert:{...h.response.alerts[0],state:'Acknowledge',version:2}})});
+  await new Promise(setImmediate);
+  h.pending.shift()({ok:true,json:async () => ({...h.response,alerts:[{...h.response.alerts[0],state:'Acknowledge',version:2}]})});
+  await updating;
+  assert.equal(h.document.activeElement,
+    h.elements.rows.children[0].querySelector('button[data-action="advance"]'));
+});
+test('server failure does not falsely claim an update was never applied', async () => {
+  const h = harness();
+  const first = h.run("token='operator'; load()");
+  h.pending.shift()({ok:true,json:async () => h.response}); await first;
+  const button = h.elements.rows.children[0].querySelector('button[data-action="advance"]');
+  button.focus(); const update = h.run('advanceAlert(alerts[0],document.activeElement)');
+  h.pending.shift()({ok:false,status:500,json:async () => ({error:'Internal error'})});
+  await update;
+  assert.match(h.elements.status.textContent,/could not be confirmed/);
+  assert.doesNotMatch(h.elements.status.textContent,/not applied/);
 });

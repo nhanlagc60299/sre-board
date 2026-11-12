@@ -27,3 +27,12 @@ An additional first-load failure test exposed ambiguous loading/empty output and
 was corrected separately. Unit tests use DOM/fetch doubles, not browser evidence.
 Actual desktop/390px, keyboard, dialog, network-error and full-flow checks remain
 required on the exact integrated candidate. No full WCAG conformance is claimed.
+
+Real PR-preview browser testing exposed another gap in the DOM double: disabling
+the active button blurs focus before render can preserve it. A new regression
+simulates native disable/blur and failed before correction. The implementation
+restores the next action or visible heading after success, unless the user moved
+focus to another control. Connect/Disconnect also set deliberate focus targets.
+This validates why mocked-DOM unit passes cannot replace actual browser QA.
+Unknown transport/server outcomes say the update could not be confirmed, rather
+than claiming no mutation occurred. Refresh is required before another attempt.
