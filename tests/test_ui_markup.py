@@ -27,6 +27,6 @@ class MarkupTests(unittest.TestCase):
                 if tag == 'select':
                     self.in_filter = False
         parsed = Options()
-        parsed.feed(Path('static/index.html').read_text())
+        parsed.feed((Path(__file__).resolve().parents[1] / 'static/index.html').read_text())
         self.assertEqual([('', 'All severities'), ('P1','P1'), ('P2','P2'),
                           ('P3','P3'), ('P4','P4')], parsed.options)

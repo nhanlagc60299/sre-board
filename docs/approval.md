@@ -3,11 +3,10 @@
 PO: Anh Nhan Le (`nhanlagc60299`). Date: 2026-11-12, Asia/Ho_Chi_Minh.
 Source: explicit reply in the Codex project conversation.
 
-> duyệt, hãy làm theo bộ document này, cleanup hết những gì đã làm
-
-English translation: "Approved. Follow this document set and clean up the work
-done so far." The original quotation is retained solely as approval provenance;
-the English record below defines its scope without fabricating a broader approval.
+English translation of the PO reply: "Approved. Follow this document set and
+clean up the work done so far." The original-language reply is preserved in the
+workspace approval record and project conversation. Repository content stays
+English; this translation does not broaden the original authorization.
 
 Approved artifact: SRE Board review pack v0.2.0, twelve specification chapters,
 nine diagrams and four rendered wireframes. Workspace path:

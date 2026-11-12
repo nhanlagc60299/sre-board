@@ -22,7 +22,7 @@ def normalized(data):
             raise Problem(400, f'Invalid {field}')
         value = value.strip()
         if not value.isprintable():
-            raise Problem(400, f'Control character in {field}')
+            raise Problem(400, f'Non-printable character in {field}')
         result[field] = value
     if result['severity'] not in ('P1', 'P2', 'P3', 'P4'):
         raise Problem(400, 'Severity must be P1, P2, P3 or P4')
