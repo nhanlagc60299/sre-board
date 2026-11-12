@@ -15,7 +15,7 @@ export SREB_DB='sreboard.sqlite'
 python3 -m sreboard.server
 ```
 
-Open http://127.0.0.1:8765. Unlock the board with the operator access key; it stays in tab memory only.
+Open http://127.0.0.1:8765. Connect with the board access key; it stays in tab memory only.
 This shared pilot API key is not a Jira/GitHub password or per-person identity.
 The server binds loopback only. These sample strings are instructions, not deployed
 credentials. The pilot is not an internet-facing production server.

@@ -5,6 +5,7 @@ const fs = require('node:fs');
 // Unit tests use a minimal DOM/fetch double, not evidence of browser rendering.
 function harness() {
   const elements = {}, pending = [];
+  let scheduled = 0;
   const document = {activeElement: null};
   class Element {
     constructor(tag = 'div') { this.tagName = tag; this.children = []; this.dataset = {}; this.value = ''; this.events = {}; }
@@ -31,11 +32,11 @@ function harness() {
   document.createElement = tag => new Element(tag);
   document.getElementById = id => elements[id] ||= new Element();
   const context = vm.createContext({document, fetch: () => new Promise(resolve => pending.push(resolve)),
-    setInterval: () => 1, clearInterval: () => {}, Date, Error, console});
+    setInterval: () => ++scheduled, clearInterval: () => {}, Date, Error, console});
   vm.runInContext(fs.readFileSync('static/app.js', 'utf8'), context);
   const run = code => vm.runInContext(code, context);
   const response = {alerts: [{id:'fixture-A', title:'Unresolved P1', pipeline:'orders', severity:'P1', state:'New', version:1, updated_at:'2026-11-11T00:00:00Z'}], total:1, truncated:false};
-  return {run, elements, pending, document, response};
+  return {run, elements, pending, document, response, scheduled:() => scheduled};
 }
 test('late report response cannot repopulate after disconnect', async () => {
   const h = harness();
@@ -112,4 +113,98 @@ test('resolved rows can open history but have no advance action', async () => {
   await opening;
   assert.equal(h.elements.detail.open, true);
   assert.match(h.elements['detail-content'].textContent, /Retained resolved incident/);
+});
+test('older detail response cannot overwrite the newly selected alert', async () => {
+  const h = harness();
+  const first = h.run("token='operator'; showHistory({id:'a'})");
+  const second = h.run("showHistory({id:'b'})");
+  const oldResolve = h.pending.shift(), newResolve = h.pending.shift();
+  newResolve({ok:true,json:async () => ({alert:{...h.response.alerts[0],id:'b',title:'Selected B'},history:[]})});
+  await second;
+  oldResolve({ok:true,json:async () => ({alert:{...h.response.alerts[0],id:'a',title:'Old A'},history:[]})});
+  await first;
+  assert.match(h.elements['detail-content'].textContent,/Selected B/);
+  assert.doesNotMatch(h.elements['detail-content'].textContent,/Old A/);
+});
+test('disconnect clears retained protected detail content', async () => {
+  const h = harness();
+  const loading = h.run("token='operator'; showHistory({id:'a'})");
+  h.pending.shift()({ok:true,json:async () => ({alert:h.response.alerts[0],history:[]})});
+  await loading;
+  h.run('disconnect()');
+  assert.equal(h.elements['detail-content'].textContent,'');
+  assert.equal(h.elements.detail.open,false);
+  assert.equal(h.document.activeElement,h.elements.token);
+});
+test('ordinary disconnect focuses the key field even without an open dialog', () => {
+  const h = harness(); h.run("token='operator'; disconnect()");
+  assert.equal(h.document.activeElement,h.elements.token);
+  assert.equal(h.elements.session.hidden,false);
+  assert.equal(h.elements.board.hidden,true);
+});
+test('removing a focused alert returns focus to the visible view heading', async () => {
+  const h = harness();
+  const heading = h.run("document.getElementById('view-heading')");
+  const first = h.run("token='operator'; load()");
+  h.pending.shift()({ok:true,json:async () => h.response}); await first;
+  h.elements.rows.children[0].children[1].children[0].focus();
+  const refresh = h.run('load()');
+  h.pending.shift()({ok:true,json:async () => ({alerts:[],total:0,truncated:false})});
+  await refresh;
+  assert.equal(h.document.activeElement,heading);
+});
+test('first-load failure shows an error rather than a loading or all-clear state', async () => {
+  const h = harness();
+  const empty = h.run("document.getElementById('empty')");
+  const loading = h.run("token='operator'; load()");
+  h.pending.shift()({ok:false,status:503,json:async () => ({error:'Unavailable'})});
+  await loading;
+  assert.match(empty.textContent,/Report unavailable/);
+  assert.doesNotMatch(empty.textContent,/Loading|All clear/);
+});
+test('disabling the clicked action cannot lose focus after its successful update', async () => {
+  const h = harness();
+  h.run("document.body=document.getElementById('unit-body')");
+  const first = h.run("token='operator'; load()");
+  h.pending.shift()({ok:true,json:async () => h.response}); await first;
+  const button = h.elements.rows.children[0].querySelector('button[data-action="advance"]');
+  button.focus();
+  Object.defineProperty(button,'disabled',{set(value){
+    if (value && h.document.activeElement === this) h.document.activeElement=h.document.body;
+  }});
+  const updating = h.run('advanceAlert(alerts[0],document.activeElement)');
+  h.pending.shift()({ok:true,json:async () => ({alert:{...h.response.alerts[0],state:'Acknowledge',version:2}})});
+  await new Promise(setImmediate);
+  h.pending.shift()({ok:true,json:async () => ({...h.response,alerts:[{...h.response.alerts[0],state:'Acknowledge',version:2}]})});
+  await updating;
+  assert.equal(h.document.activeElement,
+    h.elements.rows.children[0].querySelector('button[data-action="advance"]'));
+});
+test('server failure does not falsely claim an update was never applied', async () => {
+  const h = harness();
+  h.run("document.body=document.getElementById('unit-body')");
+  const first = h.run("token='operator'; load()");
+  h.pending.shift()({ok:true,json:async () => h.response}); await first;
+  const button = h.elements.rows.children[0].querySelector('button[data-action="advance"]');
+  Object.defineProperty(button,'disabled',{set(value){
+    if (value && h.document.activeElement === this) h.document.activeElement=h.document.body;
+  }});
+  button.focus(); const update = h.run('advanceAlert(alerts[0],document.activeElement)');
+  h.pending.shift()({ok:false,status:500,json:async () => ({error:'Internal error'})});
+  await update;
+  assert.match(h.elements.status.textContent,/could not be confirmed/);
+  assert.doesNotMatch(h.elements.status.textContent,/not applied/);
+  assert.equal(h.document.activeElement,button);
+});
+test('an obsolete connect handler cannot start another timer or steal focus', async () => {
+  const h = harness(), field = h.run("document.getElementById('token')");
+  field.value='old'; const first=h.elements.session.events.submit({preventDefault(){}});
+  h.run('disconnect()'); field.value='new';
+  const second=h.elements.session.events.submit({preventDefault(){}});
+  const oldResolve=h.pending.shift(), newResolve=h.pending.shift();
+  newResolve({ok:true,json:async () => ({alerts:[],total:0,truncated:false})}); await second;
+  h.elements.search.focus();
+  oldResolve({ok:true,json:async () => h.response}); await first;
+  assert.equal(h.scheduled(),1);
+  assert.equal(h.document.activeElement,h.elements.search);
 });
