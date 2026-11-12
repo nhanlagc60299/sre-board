@@ -113,3 +113,44 @@ test('resolved rows can open history but have no advance action', async () => {
   assert.equal(h.elements.detail.open, true);
   assert.match(h.elements['detail-content'].textContent, /Retained resolved incident/);
 });
+test('older detail response cannot overwrite the newly selected alert', async () => {
+  const h = harness();
+  const first = h.run("token='operator'; showHistory({id:'a'})");
+  const second = h.run("showHistory({id:'b'})");
+  const oldResolve = h.pending.shift(), newResolve = h.pending.shift();
+  newResolve({ok:true,json:async () => ({alert:{...h.response.alerts[0],id:'b',title:'Selected B'},history:[]})});
+  await second;
+  oldResolve({ok:true,json:async () => ({alert:{...h.response.alerts[0],id:'a',title:'Old A'},history:[]})});
+  await first;
+  assert.match(h.elements['detail-content'].textContent,/Selected B/);
+  assert.doesNotMatch(h.elements['detail-content'].textContent,/Old A/);
+});
+test('disconnect clears retained protected detail content', async () => {
+  const h = harness();
+  const loading = h.run("token='operator'; showHistory({id:'a'})");
+  h.pending.shift()({ok:true,json:async () => ({alert:h.response.alerts[0],history:[]})});
+  await loading;
+  h.run('disconnect()');
+  assert.equal(h.elements['detail-content'].textContent,'');
+  assert.equal(h.elements.detail.open,false);
+});
+test('removing a focused alert returns focus to the visible view heading', async () => {
+  const h = harness();
+  const heading = h.run("document.getElementById('view-heading')");
+  const first = h.run("token='operator'; load()");
+  h.pending.shift()({ok:true,json:async () => h.response}); await first;
+  h.elements.rows.children[0].children[1].children[0].focus();
+  const refresh = h.run('load()');
+  h.pending.shift()({ok:true,json:async () => ({alerts:[],total:0,truncated:false})});
+  await refresh;
+  assert.equal(h.document.activeElement,heading);
+});
+test('first-load failure shows an error rather than a loading or all-clear state', async () => {
+  const h = harness();
+  const empty = h.run("document.getElementById('empty')");
+  const loading = h.run("token='operator'; load()");
+  h.pending.shift()({ok:false,status:503,json:async () => ({error:'Unavailable'})});
+  await loading;
+  assert.match(empty.textContent,/Report unavailable/);
+  assert.doesNotMatch(empty.textContent,/Loading|All clear/);
+});

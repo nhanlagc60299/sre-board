@@ -6,35 +6,36 @@
   <script src="/app.js" defer></script>
 </head>
 <body>
-  <aside class="sidebar">
-    <a class="brand" href="/">SRE<span>BOARD</span></a>
-    <p class="workspace">PIPELINE OPERATIONS</p>
-    <nav class="view-tabs" aria-label="Alert views"><button id="active-view" class="nav-current" type="button" aria-pressed="true">Active alerts <span id="nav-count">—</span></button><button id="resolved-view" type="button" aria-pressed="false">Resolved history</button></nav>
-    <section class="side-note"><h2>Handling flow</h2><ol>
-      <li>New</li><li>Acknowledge</li><li>Investigating</li><li>Monitoring</li><li>Resolved</li>
-    </ol><p>Resolved leaves the active report. History is retained.</p></section>
-    <p class="pilot">Local pilot · Operations workspace</p>
-  </aside>
   <main>
-    <header class="topbar"><span>Operations / Alert report</span><span id="connection">Not connected</span></header>
-    <section class="heading"><div><h1>Keep the signal.<br>Close the loop.</h1><p>One workspace for pipeline alerts, from first acknowledgment to resolution.</p></div><button id="refresh" type="button">Refresh report</button></section>
-    <form id="session" class="session"><label for="token">Operator access key</label><input id="token" type="password" autocomplete="off" placeholder="Enter the access key for this pilot" required><button type="submit">Unlock board</button><button id="disconnect" class="secondary" type="button">Disconnect</button><span>Pilot access key, not a Jira or GitHub password.</span></form>
-    <p id="status" class="status" role="status" aria-live="polite">Unlock the board to load the live report.</p>
-    <section class="summary" aria-label="Severity counts for loaded rows">
-      <div><span id="scope-label" class="summary-label">LOADED ACTIVE</span><strong id="total">—</strong><small>Before filters · maximum 500</small></div>
-      <div><span class="severity p1">P1 · Critical</span><strong id="P1">—</strong></div>
-      <div><span class="severity p2">P2 · High</span><strong id="P2">—</strong></div>
-      <div><span class="severity p3">P3 · Medium</span><strong id="P3">—</strong></div>
-      <div><span class="severity p4">P4 · Low</span><strong id="P4">—</strong></div>
-    </section>
-    <section id="report" class="report">
-      <div class="report-head"><div><h2 id="report-title">Active alert report</h2><p id="report-info">No data loaded</p></div><div class="filters"><label for="search" class="sr-only">Search alerts</label><input id="search" type="search" placeholder="Search title or pipeline"><label for="severity" class="sr-only">Filter severity</label><select id="severity"><option value="">All severities</option><option value="P1">P1</option><option value="P2">P2</option><option value="P3">P3</option><option value="P4">P4</option></select></div></div>
-      <p id="truncated" class="warning" hidden>Only the latest 500 active alerts are loaded. Counts describe loaded rows.</p>
-      <div class="table-wrap"><table><thead><tr><th>Severity</th><th>Alert / pipeline</th><th>Handling state</th><th>Updated</th><th>Next action</th></tr></thead><tbody id="rows"></tbody></table></div>
-      <div id="empty" class="empty">Your report is ready.<span>Unlock the board with your pilot access key.</span></div>
-      <footer><span>Severity and handling state are independent.</span><span id="updated">Not synchronized</span></footer>
-    </section>
+    <header class="topbar"><a class="brand" href="/">SRE Board <small>Pipeline operations</small></a><span id="connection">Not connected</span><button id="disconnect" class="secondary" type="button" hidden>Disconnect</button></header>
+    <form id="session" class="session">
+      <p class="eyebrow">LOCAL PILOT ACCESS</p><h1>Connect to your alert board.</h1>
+      <p>This pilot uses a shared board key. Your Jira or GitHub login does not unlock the board.</p>
+      <label for="token">Board access key</label><input id="token" type="password" autocomplete="off" placeholder="Enter the board key provided for this pilot" required>
+      <button type="submit">Connect</button>
+      <details><summary>How do I get a key?</summary><p>The person running this local pilot provides the board key. It is separate from the webhook key. The key stays in this browser tab's memory; disconnect or reload to clear it.</p></details>
+    </form>
+    <p id="status" class="status" role="status" aria-live="polite">Connect to load the report.</p>
+    <div id="board" hidden>
+      <section class="heading"><div><p class="eyebrow">ALERT OPERATIONS</p><h1 id="view-heading" tabindex="-1">Active alerts</h1><p id="view-intro">Find the next alert. Follow it through resolution.</p></div><button id="refresh" class="secondary" type="button">Refresh report</button></section>
+      <nav class="view-tabs" aria-label="Alert views"><button id="active-view" class="nav-current" type="button" aria-pressed="true">Active alerts <span id="nav-count">—</span></button><button id="resolved-view" type="button" aria-pressed="false">Resolved history</button></nav>
+      <section class="summary" aria-label="Severity counts for loaded rows">
+        <div><span id="scope-label" class="summary-label">LOADED ACTIVE</span><strong id="total">—</strong><small>Before filters · maximum 500</small></div>
+        <div><span class="severity p1">P1</span><strong id="P1">—</strong></div>
+        <div><span class="severity p2">P2</span><strong id="P2">—</strong></div>
+        <div><span class="severity p3">P3</span><strong id="P3">—</strong></div>
+        <div><span class="severity p4">P4</span><strong id="P4">—</strong></div>
+      </section>
+      <section id="report" class="report" aria-labelledby="report-title">
+        <h2 id="report-title" class="sr-only">Active alert report</h2>
+        <div class="filters"><label for="search">Search</label><input id="search" type="search" placeholder="Search title or pipeline"><label for="severity">Severity</label><select id="severity"><option value="">All severities</option><option value="P1">P1</option><option value="P2">P2</option><option value="P3">P3</option><option value="P4">P4</option></select></div>
+        <p id="report-info">No data loaded</p><p id="truncated" class="warning" hidden></p>
+        <div class="table-wrap"><table><thead><tr><th scope="col">Severity</th><th scope="col">Alert / pipeline</th><th scope="col">Handling state</th><th scope="col">Updated</th><th scope="col">Next action</th></tr></thead><tbody id="rows"></tbody></table></div>
+        <div id="empty" class="empty">Connect to load alerts.</div>
+        <footer><span>Severity and handling state are independent.</span><span id="updated">Not synchronized</span></footer>
+      </section>
+    </div>
   </main>
-  <dialog id="detail"><div class="dialog-header"><h2>Alert history</h2><button id="close-detail" type="button">Close</button></div><div id="detail-content"></div></dialog>
+  <dialog id="detail" aria-labelledby="detail-heading"><div class="dialog-header"><h2 id="detail-heading">Alert detail</h2><button id="close-detail" class="secondary" type="button">Close</button></div><div id="detail-content"></div><p class="detail-note">Shared pilot key. This history does not identify individual operators.</p></dialog>
 </body>
 </html>
