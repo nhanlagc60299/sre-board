@@ -79,3 +79,39 @@ class MigrationTests(unittest.TestCase):
                     with store.connection() as db:
                         db.execute(sql)
         self.assertEqual(1,store.detail('a')['alert']['version'])
+
+    def test_intervening_writer_is_preserved_and_upgrade_is_aborted(self):
+        from sreboard.migrate import connect
+        source_path = self.path.resolve()
+        class BeforeWriteLock:
+            def __init__(self, db):
+                self.db = db
+            def __getattr__(self, name):
+                return getattr(self.db,name)
+            def execute(self, sql, *args):
+                if sql == 'BEGIN IMMEDIATE':
+                    with sqlite3.connect(source_path) as writer:
+                        writer.execute("UPDATE alerts SET title='Concurrent writer'")
+                return self.db.execute(sql,*args)
+        def interleave(path):
+            db = connect(path)
+            return BeforeWriteLock(db) if path == source_path else db
+        with patch('sreboard.migrate.connect',side_effect=interleave):
+            with self.assertRaisesRegex(ValueError,'changed after backup'):
+                migrate(self.path,self.backup)
+        with sqlite3.connect(self.path) as db:
+            self.assertEqual(0,db.execute('PRAGMA user_version').fetchone()[0])
+            self.assertEqual('Concurrent writer',db.execute('SELECT title FROM alerts').fetchone()[0])
+        with sqlite3.connect(self.backup) as db:
+            self.assertEqual('Title',db.execute('SELECT title FROM alerts').fetchone()[0])
+
+    def test_unknown_versions_and_corrupt_history_are_not_upgraded(self):
+        for index, sql in enumerate(["PRAGMA user_version=99",
+                "UPDATE alerts SET updated_at='invalid'",
+                "INSERT INTO history VALUES (2,'a',NULL,'New',1,'2026-11-11T00:00:00+00:00')"]):
+            path = Path(self.tmp.name)/f'invalid-{index}.sqlite'
+            with sqlite3.connect(self.path) as source, sqlite3.connect(path) as copy:
+                source.backup(copy)
+                copy.execute(sql)
+            with self.subTest(sql=sql), self.assertRaises(ValueError):
+                migrate(path,Path(self.tmp.name)/f'invalid-{index}-backup.sqlite')

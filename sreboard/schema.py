@@ -1,5 +1,4 @@
 """Versioned SQLite schema; legacy upgrades are explicit, never startup side effects."""
-import sqlite3
 from datetime import datetime, timedelta
 
 VERSION = 1
