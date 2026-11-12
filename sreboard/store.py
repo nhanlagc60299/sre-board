@@ -21,7 +21,7 @@ def normalized(data):
         if not isinstance(value, str) or not 1 <= len(value.strip()) <= limit:
             raise Problem(400, f'Invalid {field}')
         value = value.strip()
-        if any(ord(c) < 32 for c in value):
+        if not value.isprintable():
             raise Problem(400, f'Control character in {field}')
         result[field] = value
     if result['severity'] not in ('P1', 'P2', 'P3', 'P4'):
@@ -92,6 +92,7 @@ class Store:
 
     def detail(self, alert_id):
         with self.connection() as db:
+            db.execute('BEGIN')
             row = db.execute('SELECT * FROM alerts WHERE id=?', (alert_id,)).fetchone()
             if not row:
                 raise Problem(404, 'Alert not found')

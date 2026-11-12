@@ -33,7 +33,10 @@ class StoreTests(unittest.TestCase):
             self.create(event_id=severity, severity=severity)
         for key, size in [('event_id', 128), ('title', 200), ('pipeline', 120)]:
             for length in [size - 1, size]:
-                self.create(event_id=f'{key}-{length}', **{key: 'x' * length}) if key != 'event_id' else self.create(event_id='x' * length)
+                if key == 'event_id':
+                    self.create(event_id='x' * length)
+                else:
+                    self.create(event_id=f'{key}-{length}', **{key: 'x' * length})
             with self.assertRaises(Problem) as ctx:
                 self.create(**{key: 'x' * (size + 1)})
             self.assertEqual(400, ctx.exception.status)
@@ -116,3 +119,37 @@ class StoreTests(unittest.TestCase):
         with self.assertRaises(Problem) as ctx:
             self.store.detail('absent')
         self.assertEqual(404, ctx.exception.status)
+
+    def test_nonprintable_unicode_rejected_but_printable_unicode_allowed(self):
+        for char in ['\x7f', '\x85', '\u200b', '\u2028']:
+            with self.subTest(char=repr(char)):
+                with self.assertRaises(Problem) as ctx:
+                    self.create(event_id='unicode-' + hex(ord(char)), title='Alert' + char + 'title')
+                self.assertEqual(400, ctx.exception.status)
+        self.assertEqual('Cảnh báo 😀', self.create(event_id='printable', title='Cảnh báo 😀')['title'])
+
+    def test_detail_alert_and_history_share_one_snapshot(self):
+        from contextlib import contextmanager
+        with self.store.connection() as db:
+            db.execute('PRAGMA journal_mode=WAL')
+        item = self.create()
+        writer = self.store
+        class InterleavedStore(Store):
+            @contextmanager
+            def connection(probe):
+                with super(InterleavedStore, probe).connection() as db:
+                    class ProbeConnection:
+                        def __getattr__(self, name):
+                            return getattr(db, name)
+                        def execute(self, sql, parameters=()):
+                            if sql.startswith('SELECT from_state'):
+                                with ThreadPoolExecutor(1) as pool:
+                                    pool.submit(writer.transition, item['id'],
+                                                {'state':'Acknowledge', 'version':1}).result(timeout=3)
+                            return db.execute(sql, parameters)
+                    yield ProbeConnection()
+        detail = InterleavedStore(self.path).detail(item['id'])
+        self.assertEqual(1, detail['alert']['version'])
+        self.assertEqual(['New'], [h['to_state'] for h in detail['history']])
+        self.assertEqual(detail['alert']['version'], detail['history'][-1]['version'])
+        self.assertEqual(2, self.store.detail(item['id'])['alert']['version'])

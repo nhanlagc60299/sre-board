@@ -14,7 +14,7 @@ D1. POST `/api/webhook` JSON: `event_id`, `title`, `pipeline`, `severity`.
 All required strings; severity from sender exactly P1–P4, never inferred from state.
 Lengths: event_id 1–128, title 1–200, pipeline 1–120 Unicode characters after trim.
 Reject unknown fields/types, invalid severity, malformed JSON, body >16 KiB.
-Create: HTTP 201 with `{alert, duplicate:false}`; validation: 400; too large: 413.
+Create: HTTP 201 with a JSON object containing `alert` and `duplicate:false`; validation: 400; too large: 413.
 D2. New alerts start at `New`, before Acknowledge.
 D3. Only the next transition is allowed: New → Acknowledge → Investigating →
 Monitoring → Resolved. Reject skip/back/reopen/self transitions with 409.
@@ -62,3 +62,11 @@ GAP-ROL-01: no independent human technical review. Known: PO delegated agent rev
 Impact: correlated implementation/test/review error. Owner: Codex; decider: PO.
 Mitigation: requirement-driven assertions, negative/concurrency tests, browser checks,
 review checklist, and documented limitations. Closure is not an invented approval.
+
+## Approved baseline and technical clarification
+The PO approved review pack v0.2.0 on 2026-11-12 and instructed implementation.
+The package is the design/process baseline; D1–D10 remain confirmed.
+API-02 technical disposition under GOV-01: after trim, reject non-printable Unicode
+(including DEL/C1, zero-width format and line/paragraph separators); accept printable
+Unicode including Vietnamese and emoji. No case folding or Unicode normalization.
+This narrows validation explicitly; tests cover rejected and accepted examples.
