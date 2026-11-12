@@ -5,6 +5,10 @@ Source: explicit reply in the Codex project conversation.
 
 > duyệt, hãy làm theo bộ document này, cleanup hết những gì đã làm
 
+English translation: "Approved. Follow this document set and clean up the work
+done so far." The original quotation is retained solely as approval provenance;
+the English record below defines its scope without fabricating a broader approval.
+
 Approved artifact: SRE Board review pack v0.2.0, twelve specification chapters,
 nine diagrams and four rendered wireframes. Workspace path:
 `sre-board-review-pack-v0.2/index.html` (outside this repository).
