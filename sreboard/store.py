@@ -3,6 +3,7 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from uuid import uuid4
+from sreboard.schema import initialize
 
 
 class Problem(Exception):
@@ -33,25 +34,13 @@ class Store:
     def __init__(self, path):
         self.path = str(path)
         with self.connection() as db:
-            db.executescript('''
-                CREATE TABLE IF NOT EXISTS alerts (
-                    id TEXT PRIMARY KEY, event_id TEXT NOT NULL UNIQUE,
-                    title TEXT NOT NULL, pipeline TEXT NOT NULL,
-                    severity TEXT NOT NULL, state TEXT NOT NULL,
-                    version INTEGER NOT NULL, created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS history (
-                    seq INTEGER PRIMARY KEY, alert_id TEXT NOT NULL,
-                    from_state TEXT, to_state TEXT NOT NULL,
-                    version INTEGER NOT NULL, at TEXT NOT NULL
-                );
-            ''')
+            initialize(db)
 
     @contextmanager
     def connection(self):
         db = sqlite3.connect(self.path, timeout=10)
         db.row_factory = sqlite3.Row
+        db.execute('PRAGMA foreign_keys=ON')
         try:
             yield db
             db.commit()
